@@ -1,0 +1,215 @@
+//entry function for app deployment
+function runScript() {
+  //gets serial number
+  var serialNum = getSerialNum();
+  
+  //Konrad spreadsheet sheet name and url
+  var pullDict = {
+    name: "konrad spreadsheet",
+    url: 'https://docs.google.com/spreadsheets/d/1rK4piU_bmItO5fZizqZ_VGbPhgP30vDLaumRzJQ6S1c/edit#gid=0'
+  };
+  
+  //lock sheet name and url
+  var lockDict = {
+    name: "lock spreadsheet",
+    url: 'https://docs.google.com/spreadsheets/d/1rK4piU_bmItO5fZizqZ_VGbPhgP30vDLaumRzJQ6S1c/edit?addon_dry_run=AAnXSK-L83DCoNtMCXM5NJEPW-vAyPMd2pdpMJ2dtf59pKqDp7IEG415N9qUqFJcdIf80-yBpl3lsdMyVF74LxEEA73GHV0uGQiAnRdjZzpkYdQfLEQJQ30O7ZMBps3-8m2FiSkRFozo#gid=1674588623'
+  };
+  
+  //EC changes sheet name and url
+  var ecDict = {
+    name: "mamava engineering changes",
+    url: 'https://docs.google.com/spreadsheets/d/1rK4piU_bmItO5fZizqZ_VGbPhgP30vDLaumRzJQ6S1c/edit?addon_dry_run=AAnXSK-L83DCoNtMCXM5NJEPW-vAyPMd2pdpMJ2dtf59pKqDp7IEG415N9qUqFJcdIf80-yBpl3lsdMyVF74LxEEA73GHV0uGQiAnRdjZzpkYdQfLEQJQ30O7ZMBps3-8m2FiSkRFozo#gid=39635905'
+  };
+  
+  //Shipping changes sheet name and url
+  var shippingDict = {
+    name: "outbound units 2019",
+    url: 'https://docs.google.com/spreadsheets/d/1ZvWHED3niq9zI3tuACv3xj0dTKOsccDY7EM9oS3irMo/edit#gid=1028351057'
+  };
+  
+  //list of push dicts
+  var pushDicts = [lockDict, ecDict, shippingDict]
+  
+  for (var i = 0; i < pushDicts.length; i++) {
+    copySerialData(serialNum, pullDict, pushDicts[i]);
+  }
+}
+
+
+//asks user for serial number
+function getSerialNum() {
+
+  var ui = SpreadsheetApp.getUi();
+  
+  //displays dialogue box in sheets
+  var response = ui.prompt('Serial Number', 'Enter serial number', ui.ButtonSet.OK_CANCEL)
+  
+  //return user input
+  return response.getResponseText();
+}
+
+
+//sets the sheet variables and gets corresponding serial number data
+function copySerialData(serialNum, pullDict, pushDict) {
+  
+  //defines sheet one(Konrad Spreadsheet)
+  var sOne = SpreadsheetApp.openByUrl(pullDict.url);
+  
+  //gets sheet one row values for corresponding serial number
+  var serialData = getRowVals(sOne, serialNum);
+
+  //sets row values to corresponding serial data
+  setRowVals(serialNum, serialData, pushDict);
+}
+
+
+//return row values for specified serial number
+function getRowVals(sOne, serialNum) {
+  var column = sOne.getRange('A:A');
+  var values = column.getValues();
+  for (var i = 0; i < values.length; i++) {
+    if (values[i] == serialNum) {
+      var index = i+1;
+      var rangeString = "A" + index + ":" + "Z" + index;
+      var rowRange = sOne.getRange(rangeString)
+      
+      //sets cell to plain text formatting
+      rowRange.setNumberFormat("@");
+      
+      var serialData = rowRange.getValues();
+      return serialData;
+    }
+  }
+}
+
+
+//filters sheet one data based on sheet two name
+function filterSerialData(serialData, indexes) {
+    
+  var DataArray = [];
+    
+  //slices serialData for each index, adds to array
+  for (var i = 0; i < indexes.length; i++) {
+    var indexOne = indexes[i][0];
+    var indexTwo = indexes[i][1];
+    try {
+      DataArray.push(serialData[indexOne][indexTwo]);
+    }
+      
+    catch (err) {
+      var ui = SpreadsheetApp.getUi();
+      ui.alert("Serial number does not exist!");
+      return false;
+    }
+    //returns serialData array once loop is complete
+    if (i+1 == indexes.length) {
+      return DataArray;
+    }
+  }
+}
+
+
+//gets the specified columns to write data to per sheet name(in sheet two), returns serial data filtered by selection and range numbers for cells in sheet two
+function getRowRanges(pushDict, index, serialData) {
+  
+  //maps column letter + index number
+  addIndex = function (element) {
+    return element + index;
+  }
+
+  //checks which sheet data is being sent to, then returns corresponding sheet data
+  if (pushDict.name == "lock spreadsheet") {
+      
+    //designates which columns in sheet one to pull data from
+    var dataIndexes = [[0, 0], [0, 1], [0, 14], [0, 15]];
+      
+    //sends data and indexes to be combined, returns array of data
+    var filteredData = filterSerialData(serialData, dataIndexes);
+      
+    //designates which columns in sheet two have data written to them
+    var columns = ["A", "B", "C", "D"];
+    var rowRanges = columns.map(addIndex);
+    return [rowRanges, filteredData];
+  }
+  //checks which sheet data is being sent to, then returns corresponding sheet data
+  if (pushDict.name == "mamava engineering changes") {
+      
+    //designates which columns in sheet one to pull data from
+    var dataIndexes = [[0, 0], [0, 1], [0, 3], [0, 4], [0, 16]];
+      
+    //sends data and indexes to bed combined, returns array of data
+    var filteredData = filterSerialData(serialData, dataIndexes);
+      
+    //designates which columns in sheet two have data written to them
+    var columns = ["A", "B", "C", "D", "E"];
+    var rowRanges = columns.map(addIndex);
+    return [rowRanges, filteredData];
+  }
+  //checks which sheet data is being sent to, then returns corresponding sheet data
+  if (pushDict.name == "outbound units 2019") {
+      
+    //designates which columns in sheet one to pull data from
+    var dataIndexes = [[0, 0], [0, 1], [0, 15], [0, 16], [0, 22]];
+      
+    //sends data and indexes to bed combined, returns array of data
+    var filteredData = filterSerialData(serialData, dataIndexes);
+      
+    //designates which columns in sheet two have data written to them
+    var columns = ["A", "B", "D", "E", "N"];
+    var rowRanges = columns.map(addIndex);
+    return [rowRanges, filteredData];
+  }  
+}
+
+
+//writes data to sheet two, if the serial number exists in sheet, data in serial num row is overwritten, if not, data is written to first blank row
+function setRowVals(serialNum, serialData, pushDict) {
+  
+  var sTwo = SpreadsheetApp.openByUrl(pushDict.url).getSheetByName(pushDict.name);
+  
+  var column = sTwo.getRange('A:A');  
+  var values = column.getValues();
+  var serialExists = false;
+  
+  //overwrites existing serial num row
+  for (var i = 0; i <= values.length; i++) {
+    
+    if (values[i] == serialNum) {
+      var index = i+1;
+      var rowAndData = getRowRanges(pushDict, index, serialData);
+      var rowRanges = rowAndData[0];
+      var serialDataFilter = rowAndData[1];
+      for (var i = 0; i < rowRanges.length; i++) {
+          var rowCell = sTwo.getRange(rowRanges[i]);
+          
+          //sets cell to plain text formatting
+          rowCell.setNumberFormat("@");
+          
+          rowCell.setValue(serialDataFilter[i]);
+      }
+      serialExists = true;
+      break;
+    }
+  }
+  
+  //writes serial num data to first blank row if serial number doesn't exist in spreadsheet
+  if (serialExists == false) {
+    for (var i = 0; i <= values.length; i++) {
+      if (values[i] == 0) {
+        var index = i+1;
+        var rowAndData = getRowRanges(pushDict, index, serialData);
+        var rowRanges = rowAndData[0];
+        var serialDataFilter = rowAndData[1];
+        for (var i = 0; i < rowRanges.length; i++) {
+          var rowCell = sTwo.getRange(rowRanges[i]);
+          
+          //sets cell to plain text formatting
+          rowCell.setNumberFormat("@");
+          
+          rowCell.setValue(serialDataFilter[i]);
+        }
+        break;
+      }
+    }
+  }
+}
